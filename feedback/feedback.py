@@ -21,25 +21,29 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import discord
-
 from redbot.core import commands, Config
-from redbot.core.utils.chat_formatting import box
+from redbot.core.bot import Red
+import discord
+import typing
+
+from redbot.core.utils.chat_formatting import box, humanize_list
+
 from .view import FeedbackView
 
 class Feedback(commands.Cog):
-    """Give feedback about something"""
+    """Give feedback about something!"""
 
-    __author__ = "MAX"
-    __version__ = "1.0.0"
-    __docs__ = "https://github.com/ltzmax/maxcogs/blob/master/feedback/README.md"
+    __authors__: typing.List[str] = ["MAX", "AAA3A"]
+    __version__: str = "1.0.0"
+    __docs__: str = "https://github.com/ltzmax/maxcogs/blob/master/feedback/README.md"
 
+    def __init__(self, bot: Red):
+        self.bot: Red = bot
 
-    def __init__(self, bot):
-        self.bot = bot
-        self.config = Config.get_conf(self, identifier=78631113035100160)
-        default_guild = {"channel": None, "feedbacktitle": "New Feedback", "react": False}
+        self.config: Config = Config.get_conf(self, identifier=78631113035100160)
+        default_guild: typing.Dict[str, typing.Union[int, str, bool]] = {"channel": None, "feedbacktitle": "New Feedback", "react": False}
         self.config.register_guild(**default_guild)
+
         self.views: typing.List[discord.ui.View] = []
 
     async def cog_unload(self) -> None:
@@ -47,16 +51,19 @@ class Feedback(commands.Cog):
             await view.on_timeout()
             view.stop()
 
-    def format_help_for_context(self, ctx):
+    def format_help_for_context(self, ctx: commands.Context) -> str:
         """Thanks Sinbad!"""
         pre = super().format_help_for_context(ctx)
-        return f"{pre}\n\nAuthor: {self.__author__}\nCog Version: {self.__version__}\nDocs: {self.__docs__}"
+        return f"{pre}\n\nAuthors: {humanize_list(self.__authors__)}\nCog Version: {self.__version__}\nDocs: {self.__docs__}"
 
-    async def embed(self, ctx, *, feedback: str):
-        """Give feedback about something"""
-        data = await self.config.guild(ctx.guild).all()
-        channel = data["channel"]
-        title = data["feedbacktitle"]
+    @commands.guild_only()
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    @commands.bot_has_permissions(embed_links=True)
+    @commands.command()
+    async def feedback(self, ctx: commands.Context, *, feedback: str) -> None:
+        """Give feedback about something."""
+        config = await self.config.guild(ctx.guild).all()
+        channel = config["channel"]
         if channel is None:
             return await ctx.send("Channel is not set.")
         channel = self.bot.get_channel(channel)
@@ -69,38 +76,30 @@ class Feedback(commands.Cog):
             return await ctx.send(
                 "I don't have permissions to `send_message` or `embed_links` in that channel."
             )
+        title = config["feedbacktitle"]
         if len(feedback) > 1024:
             return await ctx.send(f"{title} must be 1024 characters or less.")
         embed = discord.Embed(
             title=title, description=feedback, color=await ctx.embed_color()
         )
-        embed.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar)
         embed.set_footer(text=f"User ID: {ctx.author.id}")
-        if data["react"]:
+        if config["react"]:
             view = FeedbackView()
             view._message = await channel.send(embed=embed, view=view)
-            await view.wait()
-            await ctx.tick()
+            self.views.append(view)
         else:
             await channel.send(embed=embed)
-            await ctx.tick()
+        await ctx.tick()
 
-    @commands.command()
-    @commands.guild_only()
-    @commands.cooldown(1, 60, commands.BucketType.user)
-    @commands.bot_has_permissions(embed_links=True)
-    async def feedback(self, ctx, *, feedback: str):
-        """Give feedback about something"""
-        await self.embed(ctx, feedback=feedback)
-
-    @commands.group()
     @commands.guild_only()
     @commands.admin_or_permissions(manage_guild=True)
-    async def feedbackset(self, ctx):
+    @commands.group(aliases=["feedbackset"])
+    async def setfeedback(self, ctx: commands.Context) -> None:
         """Manage settings."""
 
-    @feedbackset.command()
-    async def channel(self, ctx, channel: discord.TextChannel = None):
+    @setfeedback.command()
+    async def channel(self, ctx: commands.Context, channel: discord.TextChannel = None) -> None:
         """Set or clear the channel."""
         if (
             not channel.permissions_for(ctx.me).send_messages
@@ -118,8 +117,8 @@ class Feedback(commands.Cog):
             await self.config.guild(ctx.guild).channel.clear()
             await ctx.send("Channel has been cleared.")
 
-    @feedbackset.command()
-    async def title(self, ctx, *, title: str = None):
+    @setfeedback.command()
+    async def title(self, ctx: commands.Context, *, title: str = None) -> None:
         """Set or reset the title."""
         if title is not None and len(title) > 256:
             return await ctx.send("Feedback title must be 256 characters or less.")
@@ -130,8 +129,8 @@ class Feedback(commands.Cog):
             await self.config.guild(ctx.guild).feedbacktitle.clear()
             await ctx.send("Title has been cleared.")
 
-    @feedbackset.command()
-    async def react(self, ctx, *, toggle: bool = None):
+    @setfeedback.command()
+    async def react(self, ctx: commands.Context, toggle: bool = None) -> None:
         """Toggle whether to up/down vote."""
         if toggle is None:
             toggle = not await self.config.guild(ctx.guild).react()
@@ -141,16 +140,13 @@ class Feedback(commands.Cog):
         else:
             await ctx.send("I will no longer add upvote and downvote reactions.")
 
-    @feedbackset.command()
-    async def view(self, ctx):
+    @setfeedback.command()
+    async def view(self, ctx: commands.Context) -> None:
         """View the current settings."""
         data = await self.config.guild(ctx.guild).all()
         channel = self.bot.get_channel(data["channel"])
         title = data["feedbacktitle"]
-        if channel is None:
-            channel = "Not Set"
-        else:
-            channel = channel.mention
+        channel = "Not Set" if channel is None else channel.mention
         embed = discord.Embed(
             title="Settings",
             description=f"`{'Channel':<8}`: {channel}\n`{'Title':<8}`: {title}",
@@ -159,18 +155,17 @@ class Feedback(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.bot_has_permissions(embed_links=True)
-    @feedbackset.command()
-    async def version(self, ctx):
+    @setfeedback.command()
+    async def version(self, ctx: commands.Context) -> None:
         """Shows the version of the cog."""
         version = self.__version__
-        author = self.__author__
+        authors = self.__authors__
         embed = discord.Embed(
             title="Cog Information",
             description=box(
-                f"{'Cog Author':<11}: {author}\n{'Cog Version':<10}: {version}",
+                f"{'Cog Authors':<11}: {humanize_list(authors)}\n{'Cog Version':<10}: {version}",
                 lang="yaml",
             ),
             color=await ctx.embed_color(),
         )
         await ctx.send(embed=embed)
-
