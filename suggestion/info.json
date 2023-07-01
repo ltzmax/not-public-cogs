@@ -1,0 +1,27 @@
+{
+    "author": [
+        "max", "AAA3A"
+    ],
+    "name": "Suggestion",
+    "install_msg": "Thanks for installing. Check `[p]suggestionset help` for more informations and how to use this cog.",
+    "description": "Customizable suggestion cog to various purposes.",
+    "short": "Customizable suggestion cog to various purposes.",
+    "hidden": false,
+    "min_bot_version": "3.5.0",
+    "tags": [
+        "feedback",
+        "suggestion",
+        "bugreport",
+        "advanced"
+    ],
+    "permissions": [
+        "embed_links"
+    ],
+    "min_python_version": [
+        3,
+        8,
+        1
+    ],
+    "end_user_data_statement": "This cog does not store any End User Data.",
+    "type": "COG"
+}
