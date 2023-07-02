@@ -75,7 +75,7 @@ class Suggestion(commands.Cog):
         config = await self.config.guild(ctx.guild).all()
         channel = config["channel"]
         if channel is None:
-            await self.send.reset_cooldown(ctx)
+            # await self.send.reset_cooldown(ctx)
             return await ctx.send("Channel is not set.")
         channel = self.bot.get_channel(channel)
         # Check if the bot can send messages and embeds in the channel
@@ -84,7 +84,7 @@ class Suggestion(commands.Cog):
             not channel.permissions_for(ctx.me).send_messages
             and not channel.permissions_for(ctx.me).embed_links
         ):
-            await self.send.reset_cooldown(ctx)
+            # await self.send.reset_cooldown(ctx)
             return await ctx.send(
                 "I don't have permissions to `send_message` or `embed_links` in that channel."
             )
