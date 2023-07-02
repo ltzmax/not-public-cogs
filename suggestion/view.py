@@ -21,27 +21,59 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import discord
 import typing
+import functools
+
+import discord
+from redbot.core.bot import Red
+
+if typing.TYPE_CHECKING:
+    from .suggestion import Suggestion
+
+
+class UpVoteButton(discord.ui.Button):
+    def __init__(
+        self, emoji: str | None, callback, custom_id="UPVOTE:BUTTON"
+    ):
+        super().__init__(
+            emoji=emoji,
+            style=discord.ButtonStyle.green,
+            custom_id=custom_id,
+        )
+        self.callback = functools.partial(callback, self)
+
+
+class DownVoteButton(discord.ui.Button):
+    def __init__(
+        self, emoji: str | None, callback, custom_id="DOWNVOTE:BUTTON"
+    ):
+        super().__init__(
+            emoji=emoji,
+            style=discord.ButtonStyle.green,
+            custom_id=custom_id,
+        )
+        self.callback = functools.partial(callback, self)
 
 
 class SuggestView(discord.ui.View):
-    def __init__(self) -> None:
+    def __init__(self, bot: Red, up_emoji: None, down_emoji: None) -> None:
         super().__init__(timeout=None)
+        self.bot: Red = bot
+        self.add_item(UpVoteButton(up_emoji, self._up_button))
+        self.add_item(DownVoteButton(down_emoji, self._down_button))
 
-    @discord.ui.button(
-        emoji="👍", custom_id="suggest_up_button", style=discord.ButtonStyle.blurple
-    )
-    async def up_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+    @staticmethod
+    async def _up_button(
+        self: UpVoteButton, interaction: discord.Interaction
     ) -> None:
-        members_votes = await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
+        cog = self.view.cog
+        members_votes = await cog.config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
         up_count = len(members_votes["👍"])
         down_count = len(members_votes["👎"])
         if interaction.user.id in members_votes["👎"]:
             down_count -= 1
             members_votes["👎"].remove(interaction.user.id)
-            self.down_button.label = (
+            self.view._down_button.label = (
                 f"{down_count} votes" if down_count != 0 else None
             )
         if interaction.user.id not in members_votes["👍"]:
@@ -50,23 +82,22 @@ class SuggestView(discord.ui.View):
         else:
             up_count -= 1
             members_votes["👍"].remove(interaction.user.id)
-        await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
-        button.label = f"{up_count} votes" if up_count != 0 else None
-        await interaction.response.edit_message(view=self)
+        await cog.config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
+        self.label = f"{up_count} votes" if up_count != 0 else None
+        await interaction.response.edit_message(view=self.view)
 
-    @discord.ui.button(
-        emoji="👎", custom_id="suggest_down_button", style=discord.ButtonStyle.blurple
-    )
-    async def down_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+    @staticmethod
+    async def _down_button(
+        self: DownVoteButton, interaction: discord.Interaction
     ) -> None:
-        members_votes = await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
+        cog: "Suggestion" = self.view.cog
+        members_votes = await cog.config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
         up_count = len(members_votes["👍"])
         down_count = len(members_votes["👎"])
         if interaction.user.id in members_votes["👍"]:
             up_count -= 1
             members_votes["👍"].remove(interaction.user.id)
-            self.up_button.label = (
+            self.view._up_button.label = (
                 f"{up_count} votes" if up_count != 0 else None
             )
         if interaction.user.id not in members_votes["👎"]:
@@ -75,6 +106,10 @@ class SuggestView(discord.ui.View):
         else:
             down_count -= 1
             members_votes["👎"].remove(interaction.user.id)
-        await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
-        button.label = f"{down_count} votes" if down_count != 0 else None
-        await interaction.response.edit_message(view=self)
+        await cog.config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
+        self.label = f"{down_count} votes" if down_count != 0 else None
+        await interaction.response.edit_message(view=self.view)
+        
+    @property
+    def cog(self):
+        return self.bot.get_cog("Suggestion")

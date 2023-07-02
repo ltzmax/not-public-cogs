@@ -46,11 +46,13 @@ class Suggestion(commands.Cog):
             "default_title": "Suggestion",
             "react": False,
             "members_votes": {},
+            "up_emoji": "👍",
+            "down_emoji": "👎"
         }
         self.config.register_guild(**default_guild)
 
     async def cog_load(self) -> None:
-        self.bot.add_view(SuggestView())
+        self.bot.add_view(SuggestView(self.bot, None, None))
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         """Thanks Sinbad!"""
