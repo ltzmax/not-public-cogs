@@ -100,7 +100,7 @@ class Suggestion(commands.Cog):
         )
         embed.set_footer(text=f"User ID: {ctx.author.id}")
         if config["react"]:
-            await channel.send(embed=embed, view=SuggestView())
+            await channel.send(embed=embed, view=SuggestView(self.bot, config["up_emoji"], config["down_emoji"]))
         else:
             await channel.send(embed=embed)
         await ctx.tick()
