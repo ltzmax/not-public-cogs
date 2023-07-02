@@ -60,15 +60,9 @@ class Suggestion(commands.Cog):
         pre = super().format_help_for_context(ctx)
         return f"{pre}\n\nAuthors: {humanize_list(self.__authors__)}\nCog Version: {self.__version__}\nDocs: {self.__docs__}"
 
-    def cooldown(self, ctx: commands.Context):
-        if ctx.author.id in self.bot.owner_ids:
-            return None
-        
-        return commands.Cooldown(1, 15)
-
     @commands.guild_only()
     @commands.bot_has_permissions(embed_links=True)
-    @commands.dynamic_cooldown(cooldown, type=commands.BucketType.user)
+    @commands.cooldown(1, 15, commands.BucketType.user)
     @commands.command(aliases=["sendmessage", "sendmsg"])
     async def send(self, ctx: commands.Context, *, message: str) -> None:
         """Send your message to the set channel.
