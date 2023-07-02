@@ -25,11 +25,25 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 import discord
 import typing
+from typing import Union
+
+try:
+    from emoji import UNICODE_EMOJI_ENGLISH as EMOJI_DATA  # emoji<2.0.0
+except ImportError:
+    from emoji import EMOJI_DATA  # emoji>=2.0.0
 
 from redbot.core.utils.chat_formatting import box, humanize_list
 from .view import SuggestView
 from .utils import Emoji, EmojiConverter
 
+# Taken from Kuro's osu's cog
+# https://github.com/Kuro-Rui/Kuro-Cogs/blob/6258b80d130a1ab41373dbcc975e25441d175d53/osu/converters.py#L37-L42
+class Emoji(commands.EmojiConverter):
+    async def convert(self, ctx: commands.Context, argument: str) -> Union[str, int]:
+        if argument in EMOJI_DATA:
+            return argument
+        emoji = await super().convert(ctx, argument)
+        return emoji.id
 
 class Suggestion(commands.Cog):
     """Customizable suggestion cog to various purposes."""
@@ -97,9 +111,8 @@ class Suggestion(commands.Cog):
             title=title, description=message, color=await ctx.embed_color()
         )
         embed.set_author(
-            name=ctx.author.display_name, icon_url=ctx.author.display_avatar
+            name=f"{ctx.author.display_name} ({ctx.author.id})", icon_url=ctx.author.display_avatar
         )
-        embed.set_footer(text=f"User ID: {ctx.author.id}")
         if config["react"]:
             await channel.send(embed=embed, view=SuggestView(self.bot, config["up_emoji"], config["down_emoji"]))
         else:
@@ -198,6 +211,44 @@ class Suggestion(commands.Cog):
             return
         await self.config.guild(ctx.guild).down_emoji.set(emoji.as_emoji())
         await ctx.send(f"Set the downvote emoji to {emoji.as_emoji()}")
+
+    @suggestionset.group()
+    async def emoji(self, ctx: commands.Context) -> None:
+        """Manage the emojis for the buttons."""
+
+    @emoji.command(name="up")
+    async def emoji_up(self, ctx: commands.Context, *, emoji: Emoji = None) -> None:
+        """Set or reset the upvote emoji.
+
+        If no emoji is provided, it will reset the emoji.
+
+        **Example:**
+        - `[p]suggestionset emoji up :thumbsup:` - This will set the upvote emoji to :thumbsup:.
+        - `[p]suggestionset emoji up` - This will reset the upvote emoji.
+        """
+        if emoji:
+            await self.config.guild(ctx.guild).up_emoji.set(emoji)
+            await ctx.send(f"Upvote emoji has been set to {emoji}.")
+        else:
+            await self.config.guild(ctx.guild).up_emoji.clear()
+            await ctx.send("Upvote emoji has been cleared.")
+
+    @emoji.command(name="down")
+    async def emoji_down(self, ctx: commands.Context, *, emoji: Emoji = None) -> None:
+        """Set or reset the downvote emoji.
+
+        If no emoji is provided, it will reset the emoji.
+
+        **Example:**
+        - `[p]suggestionset emoji down :thumbsdown:` - This will set the downvote emoji to :thumbsdown:.
+        - `[p]suggestionset emoji down` - This will reset the downvote emoji.
+        """
+        if emoji:
+            await self.config.guild(ctx.guild).down_emoji.set(emoji)
+            await ctx.send(f"Downvote emoji has been set to {emoji}.")
+        else:
+            await self.config.guild(ctx.guild).down_emoji.clear()
+            await ctx.send("Downvote emoji has been cleared.")
 
     @suggestionset.command()
     async def view(self, ctx: commands.Context) -> None:
