@@ -2,7 +2,11 @@ import logging
 
 from typing import Dict, Optional, Any, TYPE_CHECKING, Union
 
-from emoji import EMOJI_DATA
+try:
+    from emoji import UNICODE_EMOJI_ENGLISH as EMOJI_DATA  # emoji<2.0.0
+except ImportError:
+    from emoji import EMOJI_DATA # emoji>=2.0.0
+    
 from redbot.core import commands
 
 log: logging.Logger = logging.getLogger("red.maxcogs.suggestions")

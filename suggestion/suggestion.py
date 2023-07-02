@@ -25,25 +25,11 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 import discord
 import typing
-from typing import Union
-
-try:
-    from emoji import UNICODE_EMOJI_ENGLISH as EMOJI_DATA  # emoji<2.0.0
-except ImportError:
-    from emoji import EMOJI_DATA  # emoji>=2.0.0
 
 from redbot.core.utils.chat_formatting import box, humanize_list
 from .view import SuggestView
-from .utils import Emoji, EmojiConverter
+from .utils import EmojiConverter
 
-# Taken from Kuro's osu's cog
-# https://github.com/Kuro-Rui/Kuro-Cogs/blob/6258b80d130a1ab41373dbcc975e25441d175d53/osu/converters.py#L37-L42
-class Emoji(commands.EmojiConverter):
-    async def convert(self, ctx: commands.Context, argument: str) -> Union[str, int]:
-        if argument in EMOJI_DATA:
-            return argument
-        emoji = await super().convert(ctx, argument)
-        return emoji.id
 
 class Suggestion(commands.Cog):
     """Customizable suggestion cog to various purposes."""
@@ -74,7 +60,10 @@ class Suggestion(commands.Cog):
         pre = super().format_help_for_context(ctx)
         return f"{pre}\n\nAuthors: {humanize_list(self.__authors__)}\nCog Version: {self.__version__}\nDocs: {self.__docs__}"
 
-    def cooldown(ctx):
+    def cooldown(self, ctx: commands.Context):
+        if ctx.author.id in self.bot.owner_ids:
+            return None
+        
         return commands.Cooldown(1, 15)
 
     @commands.guild_only()
