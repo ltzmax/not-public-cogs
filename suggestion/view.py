@@ -28,21 +28,6 @@ import typing
 class SuggestView(discord.ui.View):
     def __init__(self) -> None:
         super().__init__(timeout=None)
-        self.up_count: int = 0
-        self.down_count: int = 0
-        self.members: typing.Dict[typing.Literal["👍", "👎"], typing.Set] = {
-            "👍": set(),
-            "👎": set(),
-        }
-        self._message: discord.Message = None
-
-    async def on_timeout(self) -> None:
-        self.up_button.disabled = True
-        self.down_button.disabled = True
-        try:
-            await self._message.edit(view=self)
-        except discord.HTTPException:
-            pass
 
     @discord.ui.button(
         emoji="👍", custom_id="suggest_up_button", style=discord.ButtonStyle.blurple
@@ -50,21 +35,24 @@ class SuggestView(discord.ui.View):
     async def up_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
-        if interaction.user in self.members["👎"]:
-            self.down_count -= 1
-            self.members["👎"].remove(interaction.user)
+        members_votes = await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
+        up_count = len(members_votes["👍"])
+        down_count = len(members_votes["👎"])
+        if interaction.user.id in members_votes["👎"]:
+            down_count -= 1
+            members_votes["👎"].remove(interaction.user.id)
             self.down_button.label = (
-                f"{self.down_count} votes" if self.down_count != 0 else None
+                f"{down_count} votes" if down_count != 0 else None
             )
-        if interaction.user not in self.members["👍"]:
-            self.up_count += 1
-            self.members["👍"].add(interaction.user)
+        if interaction.user.id not in members_votes["👍"]:
+            up_count += 1
+            members_votes["👍"].append(interaction.user.id)
         else:
-            self.up_count -= 1
-            self.members["👍"].remove(interaction.user)
-        button.label = f"{self.up_count} votes" if self.up_count != 0 else None
+            up_count -= 1
+            members_votes["👍"].remove(interaction.user.id)
+        await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
+        button.label = f"{up_count} votes" if up_count != 0 else None
         await interaction.response.edit_message(view=self)
-        await interaction.followup.send("You pressed Up Vote.", ephemeral=True)
 
     @discord.ui.button(
         emoji="👎", custom_id="suggest_down_button", style=discord.ButtonStyle.blurple
@@ -72,18 +60,21 @@ class SuggestView(discord.ui.View):
     async def down_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
-        if interaction.user in self.members["👍"]:
-            self.up_count -= 1
-            self.members["👍"].remove(interaction.user)
+        members_votes = await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
+        up_count = len(members_votes["👍"])
+        down_count = len(members_votes["👎"])
+        if interaction.user.id in members_votes["👍"]:
+            up_count -= 1
+            members_votes["👍"].remove(interaction.user.id)
             self.up_button.label = (
-                f"{self.up_count} votes" if self.up_count != 0 else None
+                f"{up_count} votes" if up_count != 0 else None
             )
-        if interaction.user not in self.members["👎"]:
-            self.down_count += 1
-            self.members["👎"].add(interaction.user)
+        if interaction.user.id not in members_votes["👎"]:
+            down_count += 1
+            members_votes["👎"].append(interaction.user.id)
         else:
-            self.down_count -= 1
-            self.members["👎"].remove(interaction.user)
-        button.label = f"{self.down_count} votes" if self.down_count != 0 else None
+            down_count -= 1
+            members_votes["👎"].remove(interaction.user.id)
+        await interaction.client.get_cog("Suggestion").config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
+        button.label = f"{down_count} votes" if down_count != 0 else None
         await interaction.response.edit_message(view=self)
-        await interaction.followup.send("You pressed Down Vote.", ephemeral=True)

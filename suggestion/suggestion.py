@@ -41,19 +41,16 @@ class Suggestion(commands.Cog):
         self.bot: Red = bot
 
         self.config: Config = Config.get_conf(self, identifier=78631113035100160)
-        default_guild: typing.Dict[str, typing.Union[int, str, bool]] = {
+        default_guild: typing.Dict[str, typing.Union[int, str, bool, typing.Dict[str, typing.List[int]]]] = {
             "channel": None,
             "default_title": "Suggestion",
             "react": False,
+            "members_votes": {},
         }
         self.config.register_guild(**default_guild)
 
-        self.views: typing.List[discord.ui.View] = []
-
-    async def cog_unload(self) -> None:
-        for view in self.views:
-            await view.on_timeout()
-            view.stop()
+    async def cog_load(self) -> None:
+        self.bot.add_view(SuggestView())
 
     def format_help_for_context(self, ctx: commands.Context) -> str:
         """Thanks Sinbad!"""
@@ -76,6 +73,7 @@ class Suggestion(commands.Cog):
         config = await self.config.guild(ctx.guild).all()
         channel = config["channel"]
         if channel is None:
+            await self.send.reset_cooldown(ctx)
             return await ctx.send("Channel is not set.")
         channel = self.bot.get_channel(channel)
         # Check if the bot can send messages and embeds in the channel
@@ -84,11 +82,13 @@ class Suggestion(commands.Cog):
             not channel.permissions_for(ctx.me).send_messages
             and not channel.permissions_for(ctx.me).embed_links
         ):
+            await self.send.reset_cooldown(ctx)
             return await ctx.send(
                 "I don't have permissions to `send_message` or `embed_links` in that channel."
             )
         title = config["default_title"]
         if len(message) > 2000:
+            await self.send.reset_cooldown(ctx)
             return await ctx.send(f"{title} must be 2000 characters or less.")
         embed = discord.Embed(
             title=title, description=message, color=await ctx.embed_color()
@@ -98,9 +98,7 @@ class Suggestion(commands.Cog):
         )
         embed.set_footer(text=f"User ID: {ctx.author.id}")
         if config["react"]:
-            view = SuggestView()
-            view._message = await channel.send(embed=embed, view=view)
-            self.views.append(view)
+            await channel.send(embed=embed, view=SuggestView())
         else:
             await channel.send(embed=embed)
         await ctx.tick()
