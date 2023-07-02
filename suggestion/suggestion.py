@@ -90,7 +90,7 @@ class Suggestion(commands.Cog):
             )
         title = config["default_title"]
         if len(message) > 2000:
-            await self.send.reset_cooldown(ctx)
+            # await self.send.reset_cooldown(ctx)
             return await ctx.send(f"{title} must be 2000 characters or less.")
         embed = discord.Embed(
             title=title, description=message, color=await ctx.embed_color()
