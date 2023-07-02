@@ -110,9 +110,8 @@ class Suggestion(commands.Cog):
             title=title, description=message, color=await ctx.embed_color()
         )
         embed.set_author(
-            name=ctx.author.display_name, icon_url=ctx.author.display_avatar
+            name=f"{ctx.author.display_name} ({ctx.author.id})", icon_url=ctx.author.display_avatar
         )
-        embed.set_footer(text=f"User ID: {ctx.author.id}")
         if config["react"]:
             await channel.send(embed=embed, view=SuggestView(self.bot, config["up_emoji"], config["down_emoji"]))
         else:
