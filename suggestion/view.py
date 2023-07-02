@@ -33,7 +33,10 @@ if typing.TYPE_CHECKING:
 
 class UpVoteButton(discord.ui.Button):
     def __init__(
-        self, emoji: str | None, callback, custom_id="UPVOTE:BUTTON"
+        self,
+        emoji: typing.Optional[str],
+        callback: typing.Any,
+        custom_id: typing.Optional[str] = "UPVOTE:BUTTON",
     ):
         super().__init__(
             emoji=emoji,
@@ -45,7 +48,10 @@ class UpVoteButton(discord.ui.Button):
 
 class DownVoteButton(discord.ui.Button):
     def __init__(
-        self, emoji: str | None, callback, custom_id="DOWNVOTE:BUTTON"
+        self,
+        emoji: typing.Optional[str],
+        callback: typing.Any,
+        custom_id: typing.Optional[str] = "DOWNVOTE:BUTTON",
     ):
         super().__init__(
             emoji=emoji,
@@ -63,11 +69,12 @@ class SuggestView(discord.ui.View):
         self.add_item(DownVoteButton(down_emoji, self._down_button))
 
     @staticmethod
-    async def _up_button(
-        self: UpVoteButton, interaction: discord.Interaction
-    ) -> None:
+    async def _up_button(self: UpVoteButton, interaction: discord.Interaction) -> None:
         cog = self.view.cog
-        members_votes = await cog.config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
+        members_votes = await cog.config.guild(interaction.guild).members_votes.get_raw(
+            f"{interaction.channel.id}-{interaction.message.id}",
+            default={"👍": [], "👎": []},
+        )
         up_count = len(members_votes["👍"])
         down_count = len(members_votes["👎"])
         if interaction.user.id in members_votes["👎"]:
@@ -82,7 +89,9 @@ class SuggestView(discord.ui.View):
         else:
             up_count -= 1
             members_votes["👍"].remove(interaction.user.id)
-        await cog.config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
+        await cog.config.guild(interaction.guild).members_votes.set_raw(
+            f"{interaction.channel.id}-{interaction.message.id}", value=members_votes
+        )
         self.label = f"{up_count} votes" if up_count != 0 else None
         await interaction.response.edit_message(view=self.view)
 
@@ -91,25 +100,28 @@ class SuggestView(discord.ui.View):
         self: DownVoteButton, interaction: discord.Interaction
     ) -> None:
         cog: "Suggestion" = self.view.cog
-        members_votes = await cog.config.guild(interaction.guild).members_votes.get_raw(f"{interaction.channel.id}-{interaction.message.id}", default={"👍": [], "👎": []})
+        members_votes = await cog.config.guild(interaction.guild).members_votes.get_raw(
+            f"{interaction.channel.id}-{interaction.message.id}",
+            default={"👍": [], "👎": []},
+        )
         up_count = len(members_votes["👍"])
         down_count = len(members_votes["👎"])
         if interaction.user.id in members_votes["👍"]:
             up_count -= 1
             members_votes["👍"].remove(interaction.user.id)
-            self.view._up_button.label = (
-                f"{up_count} votes" if up_count != 0 else None
-            )
+            self.view._up_button.label = f"{up_count} votes" if up_count != 0 else None
         if interaction.user.id not in members_votes["👎"]:
             down_count += 1
             members_votes["👎"].append(interaction.user.id)
         else:
             down_count -= 1
             members_votes["👎"].remove(interaction.user.id)
-        await cog.config.guild(interaction.guild).members_votes.set_raw(f"{interaction.channel.id}-{interaction.message.id}", value=members_votes)
+        await cog.config.guild(interaction.guild).members_votes.set_raw(
+            f"{interaction.channel.id}-{interaction.message.id}", value=members_votes
+        )
         self.label = f"{down_count} votes" if down_count != 0 else None
         await interaction.response.edit_message(view=self.view)
-        
+
     @property
     def cog(self):
         return self.bot.get_cog("Suggestion")

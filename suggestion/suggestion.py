@@ -28,6 +28,7 @@ import typing
 
 from redbot.core.utils.chat_formatting import box, humanize_list
 from .view import SuggestView
+from .utils import Emoji, EmojiConverter
 
 
 class Suggestion(commands.Cog):
@@ -173,6 +174,30 @@ class Suggestion(commands.Cog):
             await ctx.send("I will now add upvote and downvote reactions.")
         else:
             await ctx.send("I will no longer add upvote and downvote reactions.")
+            
+    @suggestionset.command(aliases=["up"])
+    async def upvote(self, ctx: commands.Context, emoji: EmojiConverter):
+        """
+        Set an emoji to be used with the up vote button.
+        """
+        if not emoji:
+            await self.config.guild(ctx.guild).up_emoji.set("👍")
+            await ctx.send("I have resetted the upvote emoji.")
+            return
+        await self.config.guild(ctx.guild).up_emoji.set(emoji.as_emoji())
+        await ctx.send(f"Set the upvote emoji to {emoji.as_emoji()}")
+        
+    @suggestionset.command(aliases=["down"])
+    async def downvote(self, ctx: commands.Context, emoji: EmojiConverter):
+        """
+        Set an emoji to be used with the down vote button.
+        """
+        if not emoji:
+            await self.config.guild(ctx.guild).down_emoji.set("👍")
+            await ctx.send("I have resetted the downvote emoji.")
+            return
+        await self.config.guild(ctx.guild).down_emoji.set(emoji.as_emoji())
+        await ctx.send(f"Set the downvote emoji to {emoji.as_emoji()}")
 
     @suggestionset.command()
     async def view(self, ctx: commands.Context) -> None:
